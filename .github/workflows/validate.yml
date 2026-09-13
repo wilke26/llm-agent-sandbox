@@ -1,0 +1,28 @@
+name: Validate template
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shell syntax
+        run: bash -n scripts/*.sh
+      - name: Validate Compose model
+        run: docker compose --env-file .env.example config --quiet
+      - name: Build and start sandbox
+        run: |
+          cp .env.example .env
+          ./scripts/start.sh
+      - name: Verify isolation
+        run: ./scripts/verify.sh
+      - name: Remove sandbox
+        if: always()
+        run: docker compose down --remove-orphans

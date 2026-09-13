@@ -1,0 +1,50 @@
+name: ${COMPOSE_PROJECT_NAME:-llm-agent-sandbox}
+
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: dockerfiles/agent/Dockerfile
+      args:
+        AGENT_UID: ${AGENT_UID:-10001}
+        AGENT_GID: ${AGENT_GID:-10001}
+    image: ${AGENT_IMAGE:-llm-agent-sandbox:local}
+    init: true
+    command: ["sleep", "infinity"]
+    user: "${AGENT_UID:-10001}:${AGENT_GID:-10001}"
+    working_dir: /workspace
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: ${AGENT_PIDS_LIMIT:-128}
+    mem_limit: ${AGENT_MEMORY_LIMIT:-2g}
+    cpus: ${AGENT_CPU_LIMIT:-2.0}
+    ulimits:
+      nofile:
+        soft: ${AGENT_NOFILE_SOFT:-1024}
+        hard: ${AGENT_NOFILE_HARD:-2048}
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=${AGENT_TMPFS_SIZE:-256m},mode=1777
+      - /home/agent/.cache:rw,noexec,nosuid,nodev,size=${AGENT_CACHE_SIZE:-128m},uid=${AGENT_UID:-10001},gid=${AGENT_GID:-10001},mode=700
+    volumes:
+      - type: bind
+        source: ./workspace
+        target: /workspace
+    networks:
+      - isolated
+    environment:
+      HOME: /home/agent
+      PYTHONDONTWRITEBYTECODE: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PIP_NO_CACHE_DIR: "1"
+    stdin_open: true
+    tty: true
+    stop_grace_period: 10s
+    restart: "no"
+
+networks:
+  isolated:
+    internal: true
+    attachable: false

@@ -1,0 +1,11 @@
+.env
+.DS_Store
+Thumbs.db
+*.log
+*.pid
+.idea/
+.vscode/
+
+# Keep the directory but ignore task data by default.
+workspace/*
+!workspace/.gitkeep
