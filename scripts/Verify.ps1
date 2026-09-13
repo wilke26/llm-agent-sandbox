@@ -5,15 +5,21 @@ if (-not $containerId) { throw 'The sandbox is not running. Run ./scripts/Start.
 
 $failures = 0
 function Pass([string]$Message) { Write-Host "PASS  $Message" -ForegroundColor Green }
+function Show-Warning([string]$Message) { Write-Host "WARN  $Message" -ForegroundColor Yellow }
 function Fail([string]$Message) { Write-Host "FAIL  $Message" -ForegroundColor Red; $Script:failures++ }
 
 $configuredUser = (& docker inspect --format '{{.Config.User}}' $containerId).Trim()
 & docker compose exec -T agent sh -c 'test "$(id -u)" -ne 0'
-if (($configuredUser -notmatch '^0(?::|$)') -and $LASTEXITCODE -eq 0) { Pass 'process runs as non-root' } else { Fail 'process must run as non-root' }
+if ($configuredUser -and ($configuredUser -notmatch '^(root|0+)(:.*)?$') -and $LASTEXITCODE -eq 0) { Pass 'process runs as non-root' } else { Fail 'process must run as non-root' }
 
 $readOnly = (& docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' $containerId).Trim()
 & docker compose exec -T agent sh -c 'touch /etc/agent-sandbox-write-test' *> $null
 if (($readOnly -eq 'true') -and $LASTEXITCODE -ne 0) { Pass 'root filesystem is read-only' } else { Fail 'root filesystem must be read-only' }
+
+$memoryValues = (& docker inspect --format '{{.HostConfig.Memory}} {{.HostConfig.MemorySwap}}' $containerId).Trim() -split '\s+'
+$memoryLimit = [long]$memoryValues[0]
+$memorySwapLimit = [long]$memoryValues[1]
+if (($memoryLimit -gt 0) -and ($memorySwapLimit -eq $memoryLimit)) { Pass 'memory and memory-plus-swap limits match (swap disabled)' } else { Fail "memory-plus-swap limit must equal memory limit (Memory=$memoryLimit, MemorySwap=$memorySwapLimit)" }
 
 $capEff = (& docker compose exec -T agent sh -c "awk '/CapEff/ {print `$2}' /proc/1/status").Trim()
 if ($capEff -match '^0+$') { Pass 'effective Linux capabilities are empty' } else { Fail "effective Linux capabilities must be empty (CapEff=$capEff)" }
@@ -23,6 +29,8 @@ if ($noNewPrivs -eq '1') { Pass 'no-new-privileges is active' } else { Fail 'no-
 
 $securityOptions = (& docker info --format '{{json .SecurityOptions}}') -join ''
 if ($securityOptions -match 'seccomp') { Pass 'Docker daemon reports seccomp support' } else { Fail 'Docker daemon must report seccomp support' }
+if ($securityOptions -match 'rootless|userns') { Pass 'Docker daemon reports rootless or user-namespace isolation' } else { Show-Warning 'Docker daemon does not report rootless/userns isolation; Docker Desktop may provide a separate VM boundary' }
+if ($securityOptions -match 'apparmor|selinux') { Pass 'Docker daemon reports AppArmor or SELinux support' } else { Show-Warning 'Docker daemon does not report AppArmor/SELinux; this protection may be unavailable or reported differently' }
 
 [string[]]$networkIds = @(& docker inspect --format '{{range .NetworkSettings.Networks}}{{println .NetworkID}}{{end}}' $containerId) | Where-Object { $_ } | ForEach-Object { $_.Trim() }
 $allInternal = $true

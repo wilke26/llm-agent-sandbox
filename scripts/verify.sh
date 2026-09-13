@@ -11,9 +11,12 @@ fi
 
 failures=0
 pass() { printf 'PASS  %s\n' "$1"; }
+warn() { printf 'WARN  %s\n' "$1" >&2; }
 fail() { printf 'FAIL  %s\n' "$1" >&2; failures=$((failures + 1)); }
 
-if [[ "$(docker inspect --format '{{.Config.User}}' "${container_id}")" != 0* ]] \
+configured_user="$(docker inspect --format '{{.Config.User}}' "${container_id}")"
+if [[ -n "${configured_user}" ]] \
+  && [[ ! "${configured_user}" =~ ^(root|0+)(:.*)?$ ]] \
   && docker compose exec -T agent sh -c 'test "$(id -u)" -ne 0'; then
   pass "process runs as non-root"
 else
@@ -25,6 +28,15 @@ if [[ "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' "${container_i
   pass "root filesystem is read-only"
 else
   fail "root filesystem must be read-only"
+fi
+
+read -r memory_limit memory_swap_limit < <(
+  docker inspect --format '{{.HostConfig.Memory}} {{.HostConfig.MemorySwap}}' "${container_id}"
+)
+if [[ "${memory_limit}" =~ ^[1-9][0-9]*$ ]] && [[ "${memory_swap_limit}" == "${memory_limit}" ]]; then
+  pass "memory and memory-plus-swap limits match (swap disabled)"
+else
+  fail "memory-plus-swap limit must equal memory limit (Memory=${memory_limit:-unknown}, MemorySwap=${memory_swap_limit:-unknown})"
 fi
 
 cap_eff="$(docker compose exec -T agent sh -c "awk '/CapEff/ {print \$2}' /proc/1/status" | tr -d '\r')"
@@ -41,10 +53,23 @@ else
   fail "no-new-privileges must be active"
 fi
 
-if docker info --format '{{json .SecurityOptions}}' | grep -qi 'seccomp'; then
+security_options="$(docker info --format '{{json .SecurityOptions}}')"
+if grep -qi 'seccomp' <<<"${security_options}"; then
   pass "Docker daemon reports seccomp support"
 else
   fail "Docker daemon must report seccomp support"
+fi
+
+if grep -Eqi 'rootless|userns' <<<"${security_options}"; then
+  pass "Docker daemon reports rootless or user-namespace isolation"
+else
+  warn "Docker daemon does not report rootless/userns isolation; Docker Desktop may provide a separate VM boundary"
+fi
+
+if grep -Eqi 'apparmor|selinux' <<<"${security_options}"; then
+  pass "Docker daemon reports AppArmor or SELinux support"
+else
+  warn "Docker daemon does not report AppArmor/SELinux; this protection may be unavailable or reported differently"
 fi
 
 network_ids=()

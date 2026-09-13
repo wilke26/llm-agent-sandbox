@@ -7,10 +7,10 @@ Dieses Repository ist eine wiederverwendbare, bewusst kleine Sandbox für LLM-Ag
 ## Sicherheitseigenschaften
 
 - Kein Standardweg ins Internet (`internal: true` beim Netzwerk)
-- Benutzer ohne Root-Rechte (`10001:10001`)
+- Benutzer ohne Root-Rechte (standardmäßig `10001:10001`; unter nativem Linux auf den Host-Benutzer abgebildet)
 - Schreibgeschütztes Root-Dateisystem; kleine, flüchtige `tmpfs`-Mounts
 - Alle Linux-Capabilities entfernt; no-new-privileges aktiviert
-- Grenzen für CPU, Arbeitsspeicher, Prozesse und Dateideskriptoren
+- Grenzen für CPU, Arbeitsspeicher, Swap, Prozesse und Dateideskriptoren
 - Genau ein Bind-Mount: `./workspace` nach `/workspace`
 - Kein Docker-Socket, Homeverzeichnis, Secret und kein veröffentlichter Port
 - Wegwerfbarer Container und automatisierte Isolationstests
@@ -58,7 +58,7 @@ Der Dienst schläft lediglich dauerhaft, damit Werkzeuge sich per `docker compos
 docker compose run --rm agent python3 -c 'print("Hallo aus der Sandbox")'
 ```
 
-Das interne Netzwerk verhindert gewöhnlichen ausgehenden Zugriff. Werden Downloads benötigt, sollten Abhängigkeiten möglichst beim Image-Build eingebaut werden. Für kontrollierten Laufzeitzugriff ist ein separat geprüfter Proxy mit Allowlist besser als ein normales Netzwerk am Agenten. Keine Zugangsdaten übergeben, die der Agent nicht offenlegen darf.
+Das interne Netzwerk verhindert gewöhnlichen ausgehenden Zugriff. Werden Downloads benötigt, sollten Abhängigkeiten möglichst beim Image-Build eingebaut werden. Für kontrollierten Laufzeitzugriff ist ein separat geprüfter Proxy mit Allowlist besser als ein normales Netzwerk am Agenten. Bei jeder Egress-Freigabe erneut prüfen, ob die vorinstallierten Werkzeuge `curl` und `git` benötigt werden; beide ermöglichen direkten Abruf und Datenabfluss, sobald eine Route vorhanden ist. Keine Zugangsdaten übergeben, die der Agent nicht offenlegen darf.
 
 ## Browser-/Computer-Use-Workloads
 
@@ -73,7 +73,7 @@ Browserautomatisierung ist absichtlich nicht enthalten. Chromium bringt weitere 
 
 ## Checkliste für Anpassungen
 
-Vor zusätzlichen Paketen, Mounts, Netzwerken oder Zugangsdaten das [Bedrohungsmodell](docs/THREAT-MODEL.md) aktualisieren. Workspace eng begrenzen, lieber neu bauen als zur Laufzeit installieren, kritische Abhängigkeiten pinnen und nach jeder sicherheitsrelevanten Änderung erneut verifizieren.
+Vor zusätzlichen Paketen, Mounts, Netzwerken oder Zugangsdaten das [Bedrohungsmodell](docs/THREAT-MODEL.md) aktualisieren. Workspace eng begrenzen, lieber neu bauen als zur Laufzeit installieren, kritische Abhängigkeiten pinnen, automatische Dependabot-Aktualisierungen prüfen und nach jeder sicherheitsrelevanten Änderung erneut verifizieren. Der gepinnte Basis-Image-Digest fixiert die Image-Identität; die beim Build verwendeten Ubuntu-Paketquellen verändern sich dennoch weiterhin.
 
 Weitere Grenzen und Hinweise für Vorfälle stehen in [SECURITY.md](SECURITY.md). Vor Änderungen bitte [CONTRIBUTING.md](CONTRIBUTING.md) lesen.
 

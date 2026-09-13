@@ -20,6 +20,7 @@ services:
       - no-new-privileges:true
     pids_limit: ${AGENT_PIDS_LIMIT:-128}
     mem_limit: ${AGENT_MEMORY_LIMIT:-2g}
+    memswap_limit: ${AGENT_MEMORY_LIMIT:-2g}
     cpus: ${AGENT_CPU_LIMIT:-2.0}
     ulimits:
       nofile:

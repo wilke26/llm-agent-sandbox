@@ -7,10 +7,10 @@ This repository is a reusable, deliberately small sandbox for running an LLM age
 ## Security properties
 
 - No default internet route (`internal: true` network)
-- Non-root user (`10001:10001`)
+- Non-root user (`10001:10001` by default; mapped to the host user on native Linux)
 - Read-only root filesystem; small, ephemeral `tmpfs` mounts
 - All Linux capabilities dropped and no-new-privileges enabled
-- CPU, memory, process and file-descriptor limits
+- CPU, memory, swap, process and file-descriptor limits
 - Exactly one bind mount: `./workspace` at `/workspace`
 - No Docker socket, host home directory, secrets or published ports
 - Disposable container lifecycle and automated isolation checks
@@ -58,7 +58,7 @@ The long-running service only sleeps so that tools can attach with `docker compo
 docker compose run --rm agent python3 -c 'print("hello from the sandbox")'
 ```
 
-The internal network prevents ordinary outbound access. If the workload needs downloads, prefer preparing dependencies in the image at build time. For controlled runtime access, add a separately reviewed allowlisting proxy rather than attaching the agent to a normal network. Do not pass credentials the agent can read unless disclosure is an accepted consequence.
+The internal network prevents ordinary outbound access. If the workload needs downloads, prefer preparing dependencies in the image at build time. For controlled runtime access, add a separately reviewed allowlisting proxy rather than attaching the agent to a normal network. When enabling any egress, reassess whether the preinstalled `curl` and `git` tools are required; both become direct retrieval and exfiltration tools once a route exists. Do not pass credentials the agent can read unless disclosure is an accepted consequence.
 
 ## Browser/computer-use workloads
 
@@ -73,7 +73,7 @@ Browser automation is intentionally not bundled. Chromium adds packages, shared-
 
 ## Customization checklist
 
-Before adding packages, mounts, networks or credentials, update [the threat model](docs/THREAT-MODEL.md). Keep the workspace narrow, rebuild rather than installing at runtime, pin critical dependencies, and rerun verification after every security-relevant change.
+Before adding packages, mounts, networks or credentials, update [the threat model](docs/THREAT-MODEL.md). Keep the workspace narrow, rebuild rather than installing at runtime, pin critical dependencies, review automated Dependabot updates, and rerun verification after every security-relevant change. The pinned base-image digest fixes the image identity, but Ubuntu package repositories used during the build still change over time.
 
 See [SECURITY.md](SECURITY.md) for limitations and incident handling, and [CONTRIBUTING.md](CONTRIBUTING.md) before proposing changes.
 
