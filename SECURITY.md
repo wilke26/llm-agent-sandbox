@@ -19,6 +19,10 @@ For workloads that actively execute unknown or hostile binaries, use a disposabl
 
 The template tracks current Docker Engine/Desktop with Compose v2 and Ubuntu 24.04. Users are responsible for applying vendor security updates. No long-term support promise is made for old Docker versions.
 
+## Swap-accounting limitation
+
+The configured `memswap_limit` is effective only when the Docker host or Docker Desktop VM exposes working cgroup swap accounting. Some Linux hosts disable it at boot, and Docker versions may reject the container, warn, or retain the requested configuration without enforcing it. The verification scripts therefore check both Docker's `MemorySwap` setting and the active kernel cgroup: `memory.swap.max` must be `0` on cgroup v2, while the finite `memory.memsw.limit_in_bytes` and `memory.limit_in_bytes` values must match on cgroup v1. Missing, unreadable or inconsistent controller files fail verification. Do not treat the sandbox as swap-constrained until this check passes.
+
 ## Reporting a vulnerability
 
 Do not include live credentials, private workspace data or working exploits against third-party infrastructure in a public issue. If this repository is published, replace this paragraph with the maintainer's private security-reporting channel (for example, GitHub private vulnerability reporting). Include the affected revision, platform, Docker version, reproduction steps and expected security property.
