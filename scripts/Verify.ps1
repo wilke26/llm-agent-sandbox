@@ -21,6 +21,41 @@ $memoryLimit = [long]$memoryValues[0]
 $memorySwapLimit = [long]$memoryValues[1]
 if (($memoryLimit -gt 0) -and ($memorySwapLimit -eq $memoryLimit)) { Pass 'memory and memory-plus-swap limits match (swap disabled)' } else { Fail "memory-plus-swap limit must equal memory limit (Memory=$memoryLimit, MemorySwap=$memorySwapLimit)" }
 
+$cgroupProbe = @'
+if [ -e /sys/fs/cgroup/cgroup.controllers ]; then
+  test -r /sys/fs/cgroup/memory.swap.max || exit 1
+  value="$(cat /sys/fs/cgroup/memory.swap.max)"
+  case "${value}" in ""|*[!0-9]*) exit 1 ;; esac
+  printf "v2:%s\n" "${value}"
+  exit 0
+fi
+for base in /sys/fs/cgroup/memory /sys/fs/cgroup; do
+  memory_file="${base}/memory.limit_in_bytes"
+  memsw_file="${base}/memory.memsw.limit_in_bytes"
+  if [ -r "${memory_file}" ] && [ -r "${memsw_file}" ]; then
+    memory_value="$(cat "${memory_file}")"
+    memsw_value="$(cat "${memsw_file}")"
+    case "${memory_value}:${memsw_value}" in *[!0-9:]*) exit 1 ;; esac
+    printf "v1:%s:%s\n" "${memory_value}" "${memsw_value}"
+    exit 0
+  fi
+done
+exit 1
+'@
+$cgroupSwapOutput = & docker compose exec -T agent sh -c $cgroupProbe
+$cgroupProbeSucceeded = $LASTEXITCODE -eq 0
+$cgroupSwapState = ($cgroupSwapOutput -join '').Trim()
+$cgroupParts = $cgroupSwapState -split ':'
+if ($cgroupProbeSucceeded -and ($cgroupSwapState -eq 'v2:0')) {
+    Pass 'kernel cgroup swap limit disables swap (v2)'
+} elseif ($cgroupProbeSucceeded -and ($cgroupParts.Count -eq 3) -and ($cgroupParts[0] -eq 'v1') -and ($cgroupParts[1] -match '^[1-9][0-9]*$') -and ($cgroupParts[1] -eq $cgroupParts[2]) -and ($cgroupParts[1] -eq "$memoryLimit")) {
+    Pass 'kernel cgroup swap limit disables swap (v1)'
+} elseif (-not $cgroupProbeSucceeded) {
+    Fail 'kernel cgroup swap accounting is unavailable or unreadable'
+} else {
+    Fail "kernel cgroup limits do not prove swap is disabled ($cgroupSwapState)"
+}
+
 $capEff = (& docker compose exec -T agent sh -c "awk '/CapEff/ {print `$2}' /proc/1/status").Trim()
 if ($capEff -match '^0+$') { Pass 'effective Linux capabilities are empty' } else { Fail "effective Linux capabilities must be empty (CapEff=$capEff)" }
 

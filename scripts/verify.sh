@@ -39,6 +39,49 @@ else
   fail "memory-plus-swap limit must equal memory limit (Memory=${memory_limit:-unknown}, MemorySwap=${memory_swap_limit:-unknown})"
 fi
 
+if cgroup_swap_state="$(docker compose exec -T agent sh -c '
+  if [ -e /sys/fs/cgroup/cgroup.controllers ]; then
+    test -r /sys/fs/cgroup/memory.swap.max || exit 1
+    value="$(cat /sys/fs/cgroup/memory.swap.max)"
+    case "${value}" in ""|*[!0-9]*) exit 1 ;; esac
+    printf "v2:%s\n" "${value}"
+    exit 0
+  fi
+  for base in /sys/fs/cgroup/memory /sys/fs/cgroup; do
+    memory_file="${base}/memory.limit_in_bytes"
+    memsw_file="${base}/memory.memsw.limit_in_bytes"
+    if [ -r "${memory_file}" ] && [ -r "${memsw_file}" ]; then
+      memory_value="$(cat "${memory_file}")"
+      memsw_value="$(cat "${memsw_file}")"
+      case "${memory_value}:${memsw_value}" in *[!0-9:]*) exit 1 ;; esac
+      printf "v1:%s:%s\n" "${memory_value}" "${memsw_value}"
+      exit 0
+    fi
+  done
+  exit 1
+' | tr -d '\r')"; then
+  case "${cgroup_swap_state}" in
+    v2:0)
+      pass "kernel cgroup swap limit disables swap (v2)"
+      ;;
+    v1:*)
+      IFS=: read -r _ cgroup_memory_limit cgroup_memsw_limit <<<"${cgroup_swap_state}"
+      if [[ "${cgroup_memory_limit}" =~ ^[1-9][0-9]*$ ]] \
+        && [[ "${cgroup_memory_limit}" == "${cgroup_memsw_limit}" ]] \
+        && [[ "${cgroup_memory_limit}" == "${memory_limit}" ]]; then
+        pass "kernel cgroup swap limit disables swap (v1)"
+      else
+        fail "kernel cgroup v1 limits do not prove swap is disabled (${cgroup_swap_state})"
+      fi
+      ;;
+    *)
+      fail "kernel cgroup swap limit is not zero (${cgroup_swap_state:-unknown})"
+      ;;
+  esac
+else
+  fail "kernel cgroup swap accounting is unavailable or unreadable"
+fi
+
 cap_eff="$(docker compose exec -T agent sh -c "awk '/CapEff/ {print \$2}' /proc/1/status" | tr -d '\r')"
 if [[ "${cap_eff}" =~ ^0+$ ]]; then
   pass "effective Linux capabilities are empty"
