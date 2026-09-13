@@ -25,7 +25,10 @@ $cgroupProbe = @'
 if [ -e /sys/fs/cgroup/cgroup.controllers ]; then
   test -r /sys/fs/cgroup/memory.swap.max || exit 1
   value="$(cat /sys/fs/cgroup/memory.swap.max)"
-  case "${value}" in ""|*[!0-9]*) exit 1 ;; esac
+  case "${value}" in
+    max) ;;
+    ""|*[!0-9]*) exit 1 ;;
+  esac
   printf "v2:%s\n" "${value}"
   exit 0
 fi
@@ -48,6 +51,8 @@ $cgroupSwapState = ($cgroupSwapOutput -join '').Trim()
 $cgroupParts = $cgroupSwapState -split ':'
 if ($cgroupProbeSucceeded -and ($cgroupSwapState -eq 'v2:0')) {
     Pass 'kernel cgroup swap limit disables swap (v2)'
+} elseif ($cgroupProbeSucceeded -and ($cgroupSwapState -eq 'v2:max')) {
+    Fail 'kernel cgroup swap limit is unlimited (v2)'
 } elseif ($cgroupProbeSucceeded -and ($cgroupParts.Count -eq 3) -and ($cgroupParts[0] -eq 'v1') -and ($cgroupParts[1] -match '^[1-9][0-9]*$') -and ($cgroupParts[1] -eq $cgroupParts[2]) -and ($cgroupParts[1] -eq "$memoryLimit")) {
     Pass 'kernel cgroup swap limit disables swap (v1)'
 } elseif (-not $cgroupProbeSucceeded) {
