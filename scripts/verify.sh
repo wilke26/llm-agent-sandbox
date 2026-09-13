@@ -43,7 +43,10 @@ if cgroup_swap_state="$(docker compose exec -T agent sh -c '
   if [ -e /sys/fs/cgroup/cgroup.controllers ]; then
     test -r /sys/fs/cgroup/memory.swap.max || exit 1
     value="$(cat /sys/fs/cgroup/memory.swap.max)"
-    case "${value}" in ""|*[!0-9]*) exit 1 ;; esac
+    case "${value}" in
+      max) ;;
+      ""|*[!0-9]*) exit 1 ;;
+    esac
     printf "v2:%s\n" "${value}"
     exit 0
   fi
@@ -59,10 +62,14 @@ if cgroup_swap_state="$(docker compose exec -T agent sh -c '
     fi
   done
   exit 1
-' | tr -d '\r')"; then
+')"; then
+  cgroup_swap_state="${cgroup_swap_state//$'\r'/}"
   case "${cgroup_swap_state}" in
     v2:0)
       pass "kernel cgroup swap limit disables swap (v2)"
+      ;;
+    v2:max)
+      fail "kernel cgroup swap limit is unlimited (v2)"
       ;;
     v1:*)
       IFS=: read -r _ cgroup_memory_limit cgroup_memsw_limit <<<"${cgroup_swap_state}"
