@@ -46,7 +46,13 @@ jobs:
           apko version
 
       - name: Prepare configuration
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+
+          agent_uid="$(sed -n 's/^AGENT_UID=//p' .env)"
+          agent_gid="$(sed -n 's/^AGENT_GID=//p' .env)"
+
+          sudo chown -R "${agent_uid}:${agent_gid}" workspace
 
       - name: Build locked apko image
         run: ./scripts/build-agent-image-apko.sh --no-lock
