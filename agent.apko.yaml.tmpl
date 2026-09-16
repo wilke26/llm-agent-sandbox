@@ -1,0 +1,108 @@
+# Template for agent.apko.yaml, replacing dockerfiles/agent/Dockerfile.
+# Fully build- and runtime-verified on 2026-09-16 (macOS/aarch64, apko
+# 1.4.1, via build-agent-image-apko.sh + compose.yaml, `scripts/verify.sh`
+# passing end-to-end): bash, sh, git, curl, gawk, coreutils
+# (cat/head/id/touch/tr), python3+venv+pip-wheel all confirmed working
+# inside the actual running container, AGENT_UID/AGENT_GID mapping
+# confirmed via `id`. gawk was added after scripts/verify.sh initially
+# failed with "awk: command not found" - it's one of the tools
+# ubuntu:24.04 provided "for free" in its base rootfs that a from-scratch
+# Wolfi image doesn't. Note /usr/bin/bash's permissions are NOT fixed
+# here - see the comment on that below; the real fix lives in
+# build-agent-image-apko.sh as a post-build patch layer.
+#
+# This is a TEMPLATE, not the file apko reads directly: __AGENT_UID__ and
+# __AGENT_GID__ get substituted by scripts/build-agent-image-apko.sh from
+# .env (the same AGENT_UID/AGENT_GID that _common.sh's prepare_repository()
+# writes there from the host UID on Linux), so the account baked into the
+# image always matches compose.yaml's `user: "${AGENT_UID}:${AGENT_GID}"`
+# override at runtime. Do not edit the generated agent.apko.yaml directly -
+# it's a build artifact, gitignored; edit this .tmpl file instead.
+#
+# Reference: https://github.com/chainguard-dev/apko/blob/main/docs/apko_file.md
+
+contents:
+  keyring:
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+  repositories:
+    - https://packages.wolfi.dev/os
+  packages:
+    - bash
+    - git
+    - curl
+    - ca-certificates-bundle
+    - python-3.12
+    - coreutils
+    # ubuntu:24.04 shipped awk "for free" as part of its base rootfs, even
+    # though the original Dockerfile never installed it explicitly.
+    # scripts/verify.sh relies on it (confirmed by build+run on
+    # 2026-09-16: "awk: command not found" without this, followed by a
+    # successful end-to-end verification after adding it).
+    - gawk
+
+accounts:
+  groups:
+    - groupname: agent
+      gid: __AGENT_GID__
+  users:
+    - username: agent
+      uid: __AGENT_UID__
+      gid: __AGENT_GID__
+      shell: /bin/bash
+  run-as: agent
+
+paths:
+  - path: /workspace
+    type: directory
+    uid: __AGENT_UID__
+    gid: __AGENT_GID__
+    permissions: 0o755
+  - path: /home/agent
+    type: directory
+    uid: __AGENT_UID__
+    gid: __AGENT_GID__
+    permissions: 0o755
+  - path: /home/agent/.cache
+    type: directory
+    uid: __AGENT_UID__
+    gid: __AGENT_GID__
+    permissions: 0o700
+  # NOTE: Wolfi's bash apk installs /usr/bin/bash with mode 0000 (confirmed
+  # by build+inspect on 2026-09-16) - apko doesn't run apk post-install
+  # scripts/triggers by design ("running scripts at image build time is
+  # intentionally out of scope for apko" - chainguard-dev/apko#441), and
+  # bash's package apparently relies on one of those to fix its own
+  # permissions. A `type: permissions` paths entry here does NOT fix this
+  # (confirmed by build+inspect: it changes the layer digest but not the
+  # actual mode bits - it likely only applies to paths apko itself
+  # creates, not pre-existing package-installed files). The actual fix is
+  # a chmod patch layer applied by build-agent-image-apko.sh AFTER the
+  # apko build, via a tiny `docker build` step - see that script.
+  #
+  # Wolfi's bash package doesn't create /bin/sh itself. Without this,
+  # anything that shells out to /bin/sh specifically - e.g. Python's
+  # subprocess.run(..., shell=True), which uses /bin/sh on Linux
+  # regardless of what shell you're typing in - breaks even though bash
+  # is present. This symlink was included in the verified build noted at
+  # the top of this file.
+  - path: /bin/sh
+    type: symlink
+    source: /bin/bash
+
+work-dir: /workspace
+
+environment:
+  HOME: /home/agent
+  PATH: /usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
+  PYTHONDONTWRITEBYTECODE: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_NO_CACHE_DIR: "1"
+
+# Matches the original Dockerfile (no ENTRYPOINT); compose.yaml already
+# sets `command: ["sleep", "infinity"]` explicitly, so this is really just
+# a sane image-level fallback.
+cmd: sleep infinity
+
+archs:
+  - x86_64
+  - aarch64

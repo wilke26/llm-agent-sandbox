@@ -26,6 +26,15 @@ This repository is a reusable, deliberately small sandbox for running an LLM age
 
 Podman may work with its Compose compatibility layer, but it is not tested by this template.
 
+## Agent image builds
+
+The repository supports two image-build paths during the transition:
+
+- **Wolfi with apko:** install `apko`, then run `./scripts/build-agent-image-apko.sh`. The script renders the ignored `agent.apko.yaml` from `agent.apko.yaml.tmpl`, refreshes `agent.apko.lock.json`, and loads `llm-agent-sandbox:local` into Docker. Review and commit lock-file changes like any dependency update. Use `--no-lock` only when the committed lock is already current and must be reused as-is.
+- **Ubuntu 24.04 fallback:** `dockerfiles/agent/Dockerfile` remains available for systems without apko. The normal Bash and PowerShell start scripts build this fallback automatically only when the configured agent image is not already present locally.
+
+An existing image named by `AGENT_IMAGE` takes precedence. This lets an apko-built image pass through the same Compose hardening and verification without being overwritten by the fallback build. To deliberately refresh the fallback image, remove that local image first or run `docker compose build --pull agent`.
+
 ## Quick start
 
 1. Copy `.env.example` to `.env` and review the resource limits.
@@ -73,7 +82,7 @@ Browser automation is intentionally not bundled. Chromium adds packages, shared-
 
 ## Customization checklist
 
-Before adding packages, mounts, networks or credentials, update [the threat model](docs/THREAT-MODEL.md). Keep the workspace narrow, rebuild rather than installing at runtime, pin critical dependencies, review automated Dependabot updates, and rerun verification after every security-relevant change. The pinned base-image digest fixes the image identity, but Ubuntu package repositories used during the build still change over time.
+Before adding packages, mounts, networks or credentials, update [the threat model](docs/THREAT-MODEL.md). Keep the workspace narrow, rebuild rather than installing at runtime, pin critical dependencies, review automated Dependabot updates, and rerun verification after every security-relevant change. The apko lock pins the resolved Wolfi packages; the fallback's pinned base-image digest fixes its base identity, while Ubuntu package repositories used during that build still change over time.
 
 See [SECURITY.md](SECURITY.md) for limitations and incident handling, and [CONTRIBUTING.md](CONTRIBUTING.md) before proposing changes.
 
