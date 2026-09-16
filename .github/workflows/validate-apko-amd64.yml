@@ -1,0 +1,75 @@
+name: Validate apko image on amd64
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "agent.apko.yaml.tmpl"
+      - "agent.apko.lock.json"
+      - "scripts/build-agent-image-apko.sh"
+      - "scripts/start.sh"
+      - "scripts/verify.sh"
+      - "compose.yaml"
+      - ".github/workflows/validate-apko-amd64.yml"
+
+permissions:
+  contents: read
+
+env:
+  AGENT_IMAGE: llm-agent-sandbox:apko-amd64-test
+  COMPOSE_PROJECT_NAME: llm-agent-sandbox-apko-amd64
+
+jobs:
+  validate-apko-amd64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Install apko
+        run: |
+          go install chainguard.dev/apko@v1.4.1
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Show tool versions
+        run: |
+          uname -m
+          docker version
+          apko version
+
+      - name: Prepare configuration
+        run: |
+          cp .env.example .env
+
+          agent_uid="$(sed -n 's/^AGENT_UID=//p' .env)"
+          agent_gid="$(sed -n 's/^AGENT_GID=//p' .env)"
+
+          sudo chown -R "${agent_uid}:${agent_gid}" workspace
+
+      - name: Build locked apko image
+        run: ./scripts/build-agent-image-apko.sh --no-lock
+
+      - name: Start sandbox
+        run: ./scripts/start.sh
+
+      - name: Confirm amd64 image
+        run: |
+          test "$(docker image inspect "$AGENT_IMAGE" --format '{{.Architecture}}')" = "amd64"
+          test "$(docker compose exec -T agent uname -m)" = "x86_64"
+
+      - name: Verify isolation
+        run: ./scripts/verify.sh
+
+      - name: Clean up
+        if: always()
+        run: |
+          docker compose down --remove-orphans
+          docker image rm "$AGENT_IMAGE" "${AGENT_IMAGE}-apko-base" || true

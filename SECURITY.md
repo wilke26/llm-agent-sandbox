@@ -17,7 +17,7 @@ For workloads that actively execute unknown or hostile binaries, use a disposabl
 
 ## Supported versions
 
-The template tracks current Docker Engine/Desktop with Compose v2 and Ubuntu 24.04. Users are responsible for applying vendor security updates. No long-term support promise is made for old Docker versions.
+The template tracks current Docker Engine/Desktop with Compose v2. The optional apko build uses locked Wolfi packages; the documented fallback uses a digest-pinned Ubuntu 24.04 base image. Users are responsible for reviewing lock and digest updates and applying vendor security updates. No long-term support promise is made for old Docker versions.
 
 ## Swap-accounting limitation
 

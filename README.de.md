@@ -26,6 +26,15 @@ Dieses Repository ist eine wiederverwendbare, bewusst kleine Sandbox für LLM-Ag
 
 Podman kann über seine Compose-Kompatibilität funktionieren, wird von dieser Vorlage aber nicht getestet.
 
+## Build des Agenten-Images
+
+Während der Übergangszeit unterstützt das Repository zwei Build-Wege:
+
+- **Wolfi mit apko:** `apko` installieren und anschließend `./scripts/build-agent-image-apko.sh` ausführen. Das Skript erzeugt die ignorierte Datei `agent.apko.yaml` aus `agent.apko.yaml.tmpl`, aktualisiert `agent.apko.lock.json` und lädt `llm-agent-sandbox:local` in Docker. Änderungen der Lock-Datei wie jedes Abhängigkeitsupdate prüfen und committen. `--no-lock` nur verwenden, wenn die eingecheckte Lock-Datei bereits aktuell ist und unverändert genutzt werden soll.
+- **Ubuntu-24.04-Fallback:** `dockerfiles/agent/Dockerfile` bleibt für Systeme ohne apko erhalten. Die normalen Bash- und PowerShell-Startskripte bauen diesen Fallback automatisch, jedoch nur, wenn das konfigurierte Agenten-Image lokal noch nicht vorhanden ist.
+
+Ein bereits vorhandenes, durch `AGENT_IMAGE` benanntes Image hat Vorrang. Dadurch nutzt ein mit apko gebautes Image dieselbe Compose-Härtung und Verifikation, ohne vom Fallback überschrieben zu werden. Um den Fallback bewusst neu zu bauen, das lokale Image vorher entfernen oder `docker compose build --pull agent` ausführen.
+
 ## Schnellstart
 
 1. `.env.example` nach `.env` kopieren und Ressourcenlimits prüfen.
@@ -73,7 +82,7 @@ Browserautomatisierung ist absichtlich nicht enthalten. Chromium bringt weitere 
 
 ## Checkliste für Anpassungen
 
-Vor zusätzlichen Paketen, Mounts, Netzwerken oder Zugangsdaten das [Bedrohungsmodell](docs/THREAT-MODEL.md) aktualisieren. Workspace eng begrenzen, lieber neu bauen als zur Laufzeit installieren, kritische Abhängigkeiten pinnen, automatische Dependabot-Aktualisierungen prüfen und nach jeder sicherheitsrelevanten Änderung erneut verifizieren. Der gepinnte Basis-Image-Digest fixiert die Image-Identität; die beim Build verwendeten Ubuntu-Paketquellen verändern sich dennoch weiterhin.
+Vor zusätzlichen Paketen, Mounts, Netzwerken oder Zugangsdaten das [Bedrohungsmodell](docs/THREAT-MODEL.md) aktualisieren. Workspace eng begrenzen, lieber neu bauen als zur Laufzeit installieren, kritische Abhängigkeiten pinnen, automatische Dependabot-Aktualisierungen prüfen und nach jeder sicherheitsrelevanten Änderung erneut verifizieren. Die apko-Lock-Datei pinnt die aufgelösten Wolfi-Pakete; beim Fallback fixiert der gepinnte Basis-Image-Digest dessen Basisidentität, während sich die beim Build verwendeten Ubuntu-Paketquellen weiterhin verändern.
 
 Weitere Grenzen und Hinweise für Vorfälle stehen in [SECURITY.md](SECURITY.md). Vor Änderungen bitte [CONTRIBUTING.md](CONTRIBUTING.md) lesen.
 
