@@ -86,6 +86,8 @@ Vor zusätzlichen Paketen, Mounts, Netzwerken oder Zugangsdaten das [Bedrohungsm
 
 Weitere Grenzen und Hinweise für Vorfälle stehen in [SECURITY.md](SECURITY.md). Vor Änderungen bitte [CONTRIBUTING.md](CONTRIBUTING.md) lesen.
 
+Die [Architekturdokumentation](docs/architecture/README.md) beschreibt Systemgrenzen, Laufzeit- und Build-Sicht, Sicherheitskontrollen sowie die Entscheidungen, die zum aktuellen Entwurf geführt haben.
+
 ## Lizenz
 
 MIT — siehe [LICENSE](LICENSE).

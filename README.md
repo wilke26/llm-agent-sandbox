@@ -86,6 +86,8 @@ Before adding packages, mounts, networks or credentials, update [the threat mode
 
 See [SECURITY.md](SECURITY.md) for limitations and incident handling, and [CONTRIBUTING.md](CONTRIBUTING.md) before proposing changes.
 
+The [architecture documentation](docs/architecture/README.md) describes the system boundaries, runtime and build views, security controls, and the decisions that led to the current design.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
