@@ -95,6 +95,7 @@ sed -e "s/__AGENT_UID__/${AGENT_UID}/g" -e "s/__AGENT_GID__/${AGENT_GID}/g" \
 if [[ "${1:-}" != "--no-lock" ]]; then
     echo "Resolving + locking package versions -> ${LOCKFILE##*/}"
     apko lock "${CONFIG}" --output "${LOCKFILE}"
+    chmod 0644 "${LOCKFILE}"
     echo "Commit ${LOCKFILE##*/} like any other dependency bump."
 elif [[ ! -f "${LOCKFILE}" ]]; then
     echo "No ${LOCKFILE##*/} yet and --no-lock given - can't skip the first lock. Run without --no-lock once." >&2

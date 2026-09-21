@@ -11,6 +11,7 @@ on:
       - "scripts/verify.sh"
       - "compose.yaml"
       - ".github/workflows/validate-apko-amd64.yml"
+      - ".github/workflows/refresh-apko-lock.yml"
 
 permissions:
   contents: read
