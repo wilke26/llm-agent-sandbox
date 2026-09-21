@@ -33,6 +33,10 @@ The repository supports two image-build paths during the transition:
 - **Wolfi with apko:** install `apko`, then run `./scripts/build-agent-image-apko.sh`. The script renders the ignored `agent.apko.yaml` from `agent.apko.yaml.tmpl`, refreshes `agent.apko.lock.json`, and loads `llm-agent-sandbox:local` into Docker. Review and commit lock-file changes like any dependency update. Use `--no-lock` only when the committed lock is already current and must be reused as-is.
 - **Ubuntu 24.04 fallback:** `dockerfiles/agent/Dockerfile` remains available for systems without apko. The normal Bash and PowerShell start scripts build this fallback automatically only when the configured agent image is not already present locally.
 
+The daily `Refresh apko lock` workflow rebuilds and verifies the apko image on native amd64. When the resolved package lock changes, it updates one dedicated automation branch and opens or refreshes a pull request for manual review; it never commits directly to `main`.
+
+For automatic pull-request creation, enable **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests** in the repository. The workflow uses the repository `GITHUB_TOKEN`; depending on repository policy, a maintainer may still need to approve the pull-request workflows before their checks start.
+
 An existing image named by `AGENT_IMAGE` takes precedence. This lets an apko-built image pass through the same Compose hardening and verification without being overwritten by the fallback build. To deliberately refresh the fallback image, remove that local image first or run `docker compose build --pull agent`.
 
 ## Quick start

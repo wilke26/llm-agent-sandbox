@@ -2,7 +2,7 @@
 
 - Status: Proposed
 - Recorded: 2026-09-21
-- Nature: Prospective; implementation is intentionally pending
+- Nature: Prospective; implementation is pending merge and operational validation
 
 ## Context
 
@@ -10,7 +10,7 @@ The committed apko lock makes builds reproducible but does not make packages cur
 
 ## Proposed decision
 
-Add a daily scheduled GitHub Actions workflow with a manual-dispatch option. It will:
+Add `.github/workflows/refresh-apko-lock.yml`, running daily at 04:17 UTC with a manual-dispatch option. It will:
 
 1. Install the pinned apko tool version and render the canonical configuration.
 2. Regenerate `agent.apko.lock.json` from current Wolfi packages.
@@ -20,7 +20,7 @@ Add a daily scheduled GitHub Actions workflow with a manual-dispatch option. It 
 6. Commit an actual change to a fixed automation branch and create or update one pull request.
 7. Require the existing protected-branch checks and human review before merge.
 
-The workflow will use least-privilege repository permissions, SHA-pinned actions, concurrency control, and no `pull_request_target` execution. The initial implementation should use the repository `GITHUB_TOKEN`; a narrowly scoped GitHub App is preferred later if token-generated pull-request workflow approval becomes operationally burdensome.
+The workflow will use narrowly scoped repository permissions, SHA-pinned actions, concurrency control, and no `pull_request_target` execution. Checkout will not persist credentials during build and verification; the repository `GITHUB_TOKEN` is exposed only to the final branch and pull-request step. A narrowly scoped GitHub App is preferred later if token-generated pull-request workflow approval becomes operationally burdensome.
 
 This workflow updates the package lock. Publishing a final OCI image and pinning its registry digest is a separate future decision.
 
