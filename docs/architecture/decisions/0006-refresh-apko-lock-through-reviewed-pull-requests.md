@@ -1,8 +1,9 @@
 # ADR 0006: Refresh the apko lock through reviewed pull requests
 
-- Status: Proposed
+- Status: Accepted
 - Recorded: 2026-09-21
-- Nature: Prospective; implementation is pending merge and operational validation
+- Accepted: 2026-09-21
+- Nature: Prospective decision, implemented and operationally validated
 
 ## Context
 
@@ -38,6 +39,8 @@ This workflow updates the package lock. Publishing a final OCI image and pinning
 - A maintainer remains responsible for reviewing and merging updates.
 - Workflow credentials and repository settings become part of the trusted automation boundary.
 
-## Acceptance criteria
+## Validation
 
-This ADR may move to Accepted only after the workflow is merged into the default branch, a no-change run is observed, a changed-lock PR is created or updated successfully, and all image and isolation checks pass on that PR.
+The decision was implemented by [PR 9](https://github.com/wilke26/llm-agent-sandbox/pull/9). The first [manual workflow run](https://github.com/wilke26/llm-agent-sandbox/actions/runs/35604269130) completed successfully, rebuilt and verified the amd64 image, detected a real lock change, and created the dedicated update branch and pull request. The generated [PR 10](https://github.com/wilke26/llm-agent-sandbox/pull/10) passed the required checks and was reviewed and merged into `main`. A second [manual workflow run](https://github.com/wilke26/llm-agent-sandbox/actions/runs/35607796286) then verified the no-change path: the build and isolation checks passed and the commit/pull-request step was skipped.
+
+These results satisfy the operational acceptance criteria.
