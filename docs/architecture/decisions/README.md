@@ -9,7 +9,7 @@ ADRs record decisions that materially affect trust boundaries, portability, buil
 | [0003](0003-support-apko-with-an-ubuntu-fallback.md) | Support apko/Wolfi with an Ubuntu fallback | Accepted | Retrospective |
 | [0004](0004-version-the-apko-package-lock.md) | Version the apko package lock | Accepted | Retrospective |
 | [0005](0005-verify-controls-across-platforms.md) | Verify controls across platforms and architectures | Accepted | Retrospective |
-| [0006](0006-refresh-apko-lock-through-reviewed-pull-requests.md) | Refresh the apko lock through reviewed pull requests | Proposed | Prospective |
+| [0006](0006-refresh-apko-lock-through-reviewed-pull-requests.md) | Refresh the apko lock through reviewed pull requests | Accepted | Prospective |
 
 ## ADR format
 
